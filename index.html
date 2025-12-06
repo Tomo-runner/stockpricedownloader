@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 株式時系列データCSVダウンロード</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        input[type="text"], input[type="number"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+        .success {
+            background-color: #e8f9e9;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        .error {
+            background-color: #fcebeb;
+            color: #c0392b;
+            border: 1px solid #c0392b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📈 株式時系列データCSVダウンロード</h1>
+
+    <label for="stockCode">銘柄コード (例: 7203.T)</label>
+    <input type="text" id="stockCode" value="7203" placeholder="銘柄コードを入力してください" required>
+
+    <label for="years">過去の年数</label>
+    <input type="number" id="years" value="5" min="1" max="50" placeholder="過去何年分 (例: 5)" required>
+
+    <button id="downloadButton">データを取得してCSVダウンロード</button>
+
+    <div id="message" class="message"></div>
+</div>
+
+<script>
+    document.getElementById('downloadButton').addEventListener('click', downloadStockData);
+    const messageElement = document.getElementById('message');
+
+    /**
+     * メッセージを表示するヘルパー関数
+     * @param {string} text - 表示するテキスト
+     * @param {string} type - 'success' または 'error'
+     */
+    function displayMessage(text, type) {
+        messageElement.textContent = text;
+        messageElement.className = `message ${type}`;
+        messageElement.style.display = 'block';
+        setTimeout(() => {
+            messageElement.style.display = 'none';
+        }, 5000);
+    }
+
+    /**
+     * 株価データを取得し、CSVとしてダウンロードするメイン関数
+     */
+    async function downloadStockData() {
+        const stockCode = document.getElementById('stockCode').value.trim();
+        const years = parseInt(document.getElementById('years').value, 10);
+
+        if (!stockCode || !years || years <= 0) {
+            displayMessage('銘柄コードと有効な年数を入力してください。', 'error');
+            return;
+        }
+
+        displayMessage(`銘柄コード: ${stockCode} の過去 ${years} 年分のデータを取得中... (ダミーデータ生成)`, 'success');
+        
+        // **********************************************
+        // ********** 実際のAPIアクセス部分 *************
+        // **********************************************
+        // 以下の fetchStockDataFromAPI を、実際に使用するAPIに合わせて書き換えてください。
+        
+        let stockData;
+        try {
+            stockData = await fetchStockDataFromAPI(stockCode, years);
+        } catch (error) {
+            console.error('APIアクセスエラー:', error);
+            displayMessage(`データの取得中にエラーが発生しました: ${error.message}`, 'error');
+            return;
+        }
+        
+        // データが空の場合はエラー
+        if (!stockData || stockData.length === 0) {
+            displayMessage('指定された期間のデータが見つかりませんでした。', 'error');
+            return;
+        }
+        
+        // CSVに変換してダウンロード
+        const csvString = convertToCSV(stockData);
+        downloadCSV(csvString, stockCode);
+        
+        displayMessage(`${stockCode} の過去 ${years} 年分のデータをCSVとしてダウンロードしました。`, 'success');
+    }
+
+    /**
+     * ⚠️ 実際のAPIからデータを取得するダミー関数 ⚠️
+     * * 実際のアプリケーションでは、ここに**Fetch API**などを使ったAPI呼び出しを実装します。
+     * 例: 
+     * const response = await fetch(`YOUR_API_ENDPOINT?symbol=${stockCode}&years=${years}&apikey=YOUR_KEY`);
+     * const data = await response.json();
+     * return data.historicalData; // APIレスポンスから必要な時系列データ配列を返す
+     * * @param {string} code - 銘柄コード
+     * @param {number} years - 取得する年数
+     * @returns {Promise<Array<Object>>} - 時系列データ (Date, Open, High, Low, Close, Volume を含むオブジェクトの配列)
+     */
+    async function fetchStockDataFromAPI(code, years) {
+        // デモ用: 過去の日付に基づいてランダムな株価データを生成します
+        const data = [];
+        const today = new Date();
+        let closePrice = 1500; // 初期の終値
+
+        // 約1年間の営業日数を250日として計算
+        const totalDays = years * 250; 
+
+        for (let i = 0; i < totalDays; i++) {
+            const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000 * 1.5); // 約1.5日おきの日付をシミュレーション
+            
+            // 週末はスキップ (ダミーなので厳密な営業日計算はしない)
+            if (date.getDay() === 0 || date.getDay() === 6) continue; 
+
+            // 前日の終値からランダムに変動
+            const open = closePrice * (1 + (Math.random() - 0.5) * 0.02);
+            const high = open * (1 + Math.random() * 0.01);
+            const low = open * (1 - Math.random() * 0.01);
+            closePrice = open * (1 + (Math.random() - 0.5) * 0.015); // 次の日の基準値
+            const volume = Math.floor(Math.random() * 500000) + 100000;
+
+            data.push({
+                Date: date.toISOString().split('T')[0],
+                Open: open.toFixed(2),
+                High: high.toFixed(2),
+                Low: low.toFixed(2),
+                Close: closePrice.toFixed(2),
+                Volume: volume
+            });
+        }
+
+        // 日付を昇順に戻す
+        return data.reverse();
+    }
+
+    /**
+     * JSON配列をCSV形式の文字列に変換する関数
+     * @param {Array<Object>} data - 変換するデータ
+     * @returns {string} - CSV形式の文字列
+     */
+    function convertToCSV(data) {
+        if (data.length === 0) return '';
+        
+        // ヘッダー行の作成
+        const headers = Object.keys(data[0]);
+        const csvRows = [];
+        csvRows.push(headers.join(','));
+
+        // データ行の作成
+        for (const row of data) {
+            const values = headers.map(header => {
+                const value = row[header];
+                // CSVで問題を起こしそうな文字をエスケープ (簡易的な処理)
+                const stringValue = String(value).replace(/"/g, '""');
+                // コンマや改行を含む場合はダブルクォーテーションで囲む
+                if (stringValue.includes(',') || stringValue.includes('\n')) {
+                    return `"${stringValue}"`;
+                }
+                return stringValue;
+            });
+            csvRows.push(values.join(','));
+        }
+
+        return csvRows.join('\n');
+    }
+
+    /**
+     * CSV文字列をファイルとしてダウンロードする関数
+     * @param {string} csvString - CSV文字列
+     * @param {string} stockCode - 銘柄コード (ファイル名に使用)
+     */
+    function downloadCSV(csvString, stockCode) {
+        const BOM = new Uint8Array([0xef, 0xbb, 0xbf]); // 日本語対応のためのBOM
+        const blob = new Blob([BOM, csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        a.href = url;
+        // ファイル名: 銘柄コード_日付.csv
+        const dateString = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        a.download = `${stockCode}_daily_${dateString}.csv`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
